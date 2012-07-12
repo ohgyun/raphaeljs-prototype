@@ -2,17 +2,14 @@
   
   // Point
   var Point = function (x, y) {
-    this.RADIUS = 3;
     this.DIFF_RATIO = 10;
-    
     this.x = x;
     this.y = y;
-    this.r = this.RADIUS;
   };
-  Point.prototype.getUpPoint = function(idx) {
+  Point.prototype.getUpY = function(idx) {
     return this.y - (idx * this.DIFF_RATIO);
   };
-  Point.prototype.getDownPoitn = function(idx) {
+  Point.prototype.getDownY = function(idx) {
     return this.y + (idx * this.DIFF_RATIO);
   };
 
@@ -44,23 +41,33 @@
     dw = d.width(),
     dh = d.height(),
     paper = Raphael(0, 0, dw, dh),
-    CURVE_COUNT = 10;
+    CURVE_COUNT = 10,
+    circles = paper.set();
   
   for (var i = 0; i < CURVE_COUNT; i++) {
-    drawRandomCurve();  
+    (function (idx) {
+      setTimeout(function () {
+        drawRandomCurvesAndCircles();  
+      }, 500*idx);
+    }(i));
+    
+    moveCirclesToFront();
   }
+  drawMask();
   
-  function drawRandomCurve() {
+  
+  // Methods
+  function drawRandomCurvesAndCircles() {
     var points = createRandomPoints(),
-      color = randomColor();
+      color = createRandomColor();
       
     drawCurve(points, color);
-    //drawCircle(points, color);
+    drawCircle(points, color);
   }
   
   function createRandomPoints() {
-    var POINT_LEN = 5,
-      PADDING = 60,
+    var POINT_LEN = 4,
+      PADDING = 200,
       w = dw - PADDING,
       h = dh - PADDING,
       points = new Points();
@@ -79,7 +86,7 @@
     return parseInt(Math.random() * (1 << 30)); 
   }  
   
-  function randomColor() {
+  function createRandomColor() {
     return random().toString(16).replace(/.*(\w{3})/, '#$1');
   } 
     
@@ -88,37 +95,79 @@
     
     points.each(function (p, i, isFirst, isLast) {
       if (isFirst) {
-        pathstr.push('M', p.x, p.y-(i*10), 'R'); 
+        pathstr.push('M', p.x, p.getUpY(i), 'R'); 
       } else {
-        pathstr.push(p.x, p.y-(i*10)); 
+        pathstr.push(p.x, p.getUpY(i)); 
       }
     });
     
     points.backEach(function (p, i, isFirst, isLast) {
       if (isLast) {
-        pathstr.push('L', p.x, p.y+(i*10), 'R'); 
+        pathstr.push('L', p.x, p.getDownY(i), 'R'); 
       } else {
-        pathstr.push(p.x, p.y+(i*10));
+        pathstr.push(p.x, p.getDownY(i));
       }
     });
     
-    paper.path(pathstr).attr({
-      'stroke': 'none',
-      'fill': '0-' + color + ':30-#fff',
-      'opacity': 0.5
-    });
-    
+    var path = paper.path(pathstr)
+        .attr({
+          'stroke': 'none',
+          'fill': color,
+          'opacity': 0
+        })
+        .toBack()
+        .animate({
+          'opacity': 0.5
+        }, 3000);
   }  
   
   function drawCircle(points, color) {
+    var RADIUS = 4;
+    
     points.each(function (point, i) {
-      paper.circle(point.x, point.y, point.r).attr({
-        'stroke': 'none',
-        'stroke-width': 1,
-        'fill': color,
-        'opacity': 0.5
-      });
+      var circle = paper.circle(point.x, point.y, 0);
+      circle
+          .attr({
+            'stroke': '#333',
+            'stroke-width': 1,
+            'stroke-opacity': 0.2,
+            'fill': color,
+            'opacity': 0
+          })
+          .hover(function () {
+            this.attr({ 'r': 20 });
+          }, function () {
+            this.attr({ 'r': 3 });
+          }, circle, circle);
+      
+      circles.push(circle);
+      
+      setTimeout(function () {
+        circle.animate({
+          'opacity': 0.5,
+          'r': RADIUS
+        }, 1200, 'elastic')
+      }, i*500);
     });  
+  }
+  
+  function moveCirclesToFront() {
+    circles.toFront();
+  }
+  
+  function drawMask() {
+    var MARGIN_LEFT = 200;
+    
+    paper
+        .rect(-MARGIN_LEFT, 0, dw+MARGIN_LEFT, dh)
+        .attr({
+          'stroke': 'none',
+          'fill': '180-#fff:80-#fff',
+          'opacity': 0
+        })
+        .animate({
+          'transform': 'T' + (dw-MARGIN_LEFT) + ',0'
+        }, 8000, 'ease-in');
   }
 
 }());
